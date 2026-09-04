@@ -17,8 +17,3 @@ async def lifespan(app: FastAPI):
 @app.get(PREFIX + "/user/login")
 def login():
     return {"message": uuid.uuid8()} 
-
-
-#TEST======================================
-@app.get(PREFIX + "/test/hello")
-def hello():
