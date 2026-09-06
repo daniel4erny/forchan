@@ -1,7 +1,12 @@
+import sys
+from pathlib import Path
+file_path = Path(__file__).resolve()
+sys.path.append(str(file_path.parent.parent))
+
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 import uuid
-from api.supa import *
+from .supa import *
 
 PREFIX = "/api/py"
 
