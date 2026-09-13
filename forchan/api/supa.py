@@ -13,7 +13,7 @@ class UserDB:
 		if not URL or not KEY:
 			raise ValueError("SUPA_URL nebo SUPA_KEY chybí v .env souboru!")
 
-		client = supabase.create_async_client(URL, KEY)
+		client = await supabase.create_async_client(URL, KEY)
 
 		return cls(client)
 
