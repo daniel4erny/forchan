@@ -1,15 +1,12 @@
-import sys
-from pathlib import Path
-file_path = Path(__file__).resolve()
-sys.path.append(str(file_path.parent.parent))
-
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
+from fastapi import HTTPException
 import uuid
-from .supa import *
+import dotenv
+from supa import *
 
+dotenv.load_dotenv()
 PREFIX = "/api/py"
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global user_client

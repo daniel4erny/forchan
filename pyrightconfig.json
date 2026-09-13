@@ -1,0 +1,4 @@
+{
+  "include": ["forchan/api"],
+  "extraPaths": ["forchan/api"]
+}
