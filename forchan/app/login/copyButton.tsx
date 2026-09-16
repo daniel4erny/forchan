@@ -18,7 +18,7 @@ export default function CopyButton({ textToCopy }: { textToCopy: string }) {
   return (
     <button
       onClick={handleCopy}
-      className="px-4 py-2 bg-amber-500 text-amber-950 rounded-md hover:bg-amber-700 transition-colors"
+      className="border border-amber-900 px-3 py-1 cursor-pointer"
     >
       {isCopied ? "copied!" : "copy"}
     </button>
