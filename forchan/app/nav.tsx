@@ -12,6 +12,7 @@ interface NavItem {
 const items: NavItem[] = [
   { label: "Home", href: "/" },
   { label: "Login", href: "/login" },
+  { label: "Token", href: "/token" },
 ];
 
 export default function Nav() {
