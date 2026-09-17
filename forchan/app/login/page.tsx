@@ -1,5 +1,6 @@
 import GenToken from "./genToken";
 import SetToken from "./setToken";
+import Check from "./check";
 
 export default function Login() {
   return (
@@ -22,9 +23,17 @@ export default function Login() {
             <li>Without the token the message will be simply deleted after three days.</li>
           </ul>
 
-          <div className="grid gap-8 md:grid-cols-2">
-            <GenToken />
-            <SetToken />
+          <div className="space-y-8">
+            <div className="grid gap-8 md:grid-cols-2">
+              <GenToken />
+              <SetToken />
+            </div>
+
+            <div className="flex justify-center">
+              <div className="w-full md:max-w-md">
+                <Check />
+              </div>
+            </div>
           </div>
         </main>
       </div>

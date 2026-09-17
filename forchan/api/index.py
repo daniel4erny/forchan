@@ -22,6 +22,10 @@ app = FastAPI(docs_url="/api/py/docs", openapi_url="/api/py/openapi.json", lifes
 
 
 #USER=====================================
-@app.get(PREFIX + "/user/login")
-def login():
-    return {"message": str(uuid.uuid4())}
+@app.post(PREFIX + "/user/login")
+async def login():
+    return await user_client.regToken()
+
+@app.get(PREFIX + "/user/checkExpiration")
+async def check(token):
+    return await user_client.checkToken(token)
