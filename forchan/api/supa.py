@@ -19,6 +19,46 @@ class db:
 
 		return cls(client)
 
+class PostDB(db):
+	async def makePost(self, title: str, text: str, board_slug: str, token: str):
+		allowedBoards = ["technology", "games", "sports"]
+		if board_slug not in allowedBoards:
+			raise HTTPException(
+					status_code=400,
+					detail="DONT FUCKING TRY ME BRO (board slug)"
+				)
+
+		response = await (
+				self.client.table("tokens")
+				.select("*")
+				.eq("session_token", token)
+				.execute()
+			)
+
+		response = response.dict()["data"]
+
+		if len(response) == 0:
+			raise HTTPException(
+					status_code=400,
+					detail="DONT FUCKING TRY ME BRO (invalid token)"
+				)
+
+		rel_token = response[0]["rel_token"]
+
+		response = await (
+			self.client.table("posts")
+			.insert({
+				"rel_token": rel_token,
+				"text": text,
+				"title": title,
+				"board_slug": board_slug
+				})
+			.execute()
+		)
+
+		return response
+
+
 
 class UserDB(db):
 	async def regToken(self):
