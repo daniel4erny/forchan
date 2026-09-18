@@ -20,7 +20,7 @@ class db:
 		return cls(client)
 
 class PostDB(db):
-	async def __getRelToken(self, token: str):
+	async def __getRelKey(self, token: str):
 		response = await (
 			self.client.table("tokens")
 			.select("*")
@@ -36,8 +36,8 @@ class PostDB(db):
 				detail="DONT FUCKING TRY ME BRO (invalid token)"
 			)
 
-		rel_token = response[0]["rel_token"]
-		return rel_token
+		rel_key = response[0]["rel_key"]
+		return rel_key
 
 	async def makePost(self, title: str, text: str, board_slug: str, token: str):
 		allowedBoards = ["technology", "games", "sports"]
@@ -47,12 +47,12 @@ class PostDB(db):
 					detail="DONT FUCKING TRY ME BRO (board slug)"
 				)
 
-		rel_token = await self.__getRelToken(token)
+		rel_key = await self.__getRelKey(token)
 
 		response = await (
 			self.client.table("posts")
 			.insert({
-				"rel_token": rel_token,
+				"rel_key": rel_key,
 				"text": text,
 				"title": title,
 				"board_slug": board_slug
@@ -63,7 +63,7 @@ class PostDB(db):
 		return response
 
 	async def editPost(self, title: str, text: str, token: str, post_id: int):
-		rel_token = await self.__getRelToken(token)
+		rel_key = await self.__getRelKey(token)
 
 		try: 
 			response = await (
@@ -73,7 +73,7 @@ class PostDB(db):
 					"title": title,
 				})
 				.eq("id", post_id)
-				.eq("rel_token", rel_token)
+				.eq("rel_key", rel_key)
 				.execute()	
 			)
 
@@ -106,13 +106,13 @@ class PostDB(db):
 				detail="DONT FUCKING TRY ME BRO (invalid token)"
 			)
 
-		rel_token = response[0]["rel_token"]
-		rel_token = await self.__getRelToken(token)
+		rel_key = response[0]["rel_key"]
+		rel_key = await self.__getRelKey(token)
 
 		response = await (
 			self.client.table("posts")
 			.delete()
-			.eq("rel_token", rel_token)
+			.eq("rel_key", rel_key)
 			.eq("id", post_id)
 			.execute()
 		)
@@ -126,8 +126,52 @@ class PostDB(db):
 		else:
 			return response
 
+	async def getPostsBoard(self, board_slug: str, page_num: int):
+		min_lim = page_num * 50
+		max_lim = ((page_num + 1) * 50) -1
 
+		response = await (
+			self.client.table("posts")
+			.select("*")
+			.eq("board_slug", board_slug)
+			.order("created_at", desc=True)
+			.range(min_lim, max_lim)
+			.execute()
+			)
 
+		return response
+
+	async def getPostsRelKey(self, rel_key: str, page_num: int):
+		min_lim = page_num * 50
+		max_lim = ((page_num + 1) * 50) -1
+
+		response = await (
+			self.client.table("posts")
+			.select("*")
+			.eq("rel_key", rel_key)
+			.order("created_at", desc=True)
+			.range(min_lim, max_lim)
+			.execute()
+		)
+
+		return response
+
+	async def getPostsSessionToken(self, token: str, page_num):
+		rel_key = await self.__getRelKey(token)
+
+		min_lim = page_num * 50
+		max_lim = ((page_num + 1) * 50) -1
+
+		response = await (
+			self.client.table("posts")
+			.select("*")
+			.eq("rel_key", rel_key)
+			.order("created_at", desc=True)
+			.range(min_lim, max_lim)
+			.execute()
+		)
+
+		return response
 
 
 
