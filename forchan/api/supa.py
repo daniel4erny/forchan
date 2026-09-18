@@ -20,6 +20,25 @@ class db:
 		return cls(client)
 
 class PostDB(db):
+	async def __getRelToken(self, token: str):
+		response = await (
+			self.client.table("tokens")
+			.select("*")
+			.eq("session_token", token)
+			.execute()
+		)
+
+		response = response.dict()["data"]
+
+		if len(response) == 0:
+			raise HTTPException(
+				status_code=400,
+				detail="DONT FUCKING TRY ME BRO (invalid token)"
+			)
+
+		rel_token = response[0]["rel_token"]
+		return rel_token
+
 	async def makePost(self, title: str, text: str, board_slug: str, token: str):
 		allowedBoards = ["technology", "games", "sports"]
 		if board_slug not in allowedBoards:
@@ -28,22 +47,7 @@ class PostDB(db):
 					detail="DONT FUCKING TRY ME BRO (board slug)"
 				)
 
-		response = await (
-				self.client.table("tokens")
-				.select("*")
-				.eq("session_token", token)
-				.execute()
-			)
-
-		response = response.dict()["data"]
-
-		if len(response) == 0:
-			raise HTTPException(
-					status_code=400,
-					detail="DONT FUCKING TRY ME BRO (invalid token)"
-				)
-
-		rel_token = response[0]["rel_token"]
+		rel_token = await self.__getRelToken(token)
 
 		response = await (
 			self.client.table("posts")
@@ -57,6 +61,73 @@ class PostDB(db):
 		)
 
 		return response
+
+	async def editPost(self, title: str, text: str, token: str, post_id: int):
+		rel_token = await self.__getRelToken(token)
+
+		try: 
+			response = await (
+				self.client.table("posts")
+				.update({
+					"text": text,
+					"title": title,
+				})
+				.eq("id", post_id)
+				.eq("rel_token", rel_token)
+				.execute()	
+			)
+
+			if not response.data:
+				raise HTTPException(
+					status_code=400,
+					detail="your post was somehow not found"
+				)
+
+			return response
+		except:
+			raise HTTPException(
+				status_code=400,
+				detail="man idk, probably u are dumb, but there is chance I am dumb so just lets move on and try again"
+				)
+
+	async def deletePost(self, token: str, post_id: int):
+		response = await (
+			self.client.table("tokens")
+			.select("*")
+			.eq("session_token", token)
+			.execute()
+		)
+
+		response = response.dict()["data"]
+
+		if len(response) == 0:
+			raise HTTPException(
+				status_code=400,
+				detail="DONT FUCKING TRY ME BRO (invalid token)"
+			)
+
+		rel_token = response[0]["rel_token"]
+		rel_token = await self.__getRelToken(token)
+
+		response = await (
+			self.client.table("posts")
+			.delete()
+			.eq("rel_token", rel_token)
+			.eq("id", post_id)
+			.execute()
+		)
+
+		if not response.data:
+			raise HTTPException(
+				status_code=400,
+				detail="the post you want to delete is not yours or it doesnt exist"
+				)
+
+		else:
+			return response
+
+
+
 
 
 
