@@ -40,7 +40,7 @@ class PostDB(db):
 		return rel_key
 
 	async def makePost(self, title: str, text: str, board_slug: str, token: str):
-		allowedBoards = ["technology", "games", "sports"]
+		allowedBoards = {"technology", "games", "sports"}
 		if board_slug not in allowedBoards:
 			raise HTTPException(
 					status_code=400,
@@ -127,6 +127,13 @@ class PostDB(db):
 			return response
 
 	async def getPostsBoard(self, board_slug: str, page_num: int):
+		allowedBoards = {"technology", "games", "sports"}
+		if board_slug not in allowedBoards:
+			raise HTTPException(
+					status_code=400,
+					detail="DONT FUCKING TRY ME BRO (board slug)"
+				)
+
 		min_lim = page_num * 50
 		max_lim = ((page_num + 1) * 50) -1
 
@@ -173,6 +180,17 @@ class PostDB(db):
 
 		return response
 
+	async def getPostId(self, post_id: int):
+		response = await (
+			self.client.table("posts")
+			.select("*")
+			.eq("post_id", post_id)
+			.execute()
+		)
+
+		return response
+
+
 
 
 class UserDB(db):
@@ -193,10 +211,10 @@ class UserDB(db):
 		token = response["session_token"]
 
 		final_res = await (
-		    self.client.table("tokens")
-		    .update({"vanish_at": vanish_at})
-		    .eq("session_token", token)
-		    .execute()
+			self.client.table("tokens")
+			.update({"vanish_at": vanish_at})
+			.eq("session_token", token)
+			.execute()
 		)
 
 		final_res = final_res.dict()["data"][0]
