@@ -1,14 +1,15 @@
 import translateSlug from "@/lib/translateBoardSlug";
-import BoardClient from "./boardClient";
+import ThreadClient from "./threadClient";
 
 type PageProps = {
 	params: Promise<{
 		board_slug: string;
+		post_id: string;
 	}>;
 };
 
-export default async function Board({ params }: PageProps) {
-	const { board_slug } = await params;
+export default async function Thread({ params }: PageProps) {
+	const { board_slug, post_id } = await params;
 	const board = translateSlug(board_slug);
 
 	return (
@@ -16,7 +17,7 @@ export default async function Board({ params }: PageProps) {
 			<div className="w-[70%] min-h-screen bg-[url('/fade.png')] bg-[length:100%_100%] bg-no-repeat bg-top bg-fixed">
 				<main className="pt-24 pl-16 pr-16">
 					<p className="text-2xl mb-6">{board}</p>
-					<BoardClient board={board} boardSlug={board_slug} />
+					<ThreadClient board={board} boardSlug={board_slug} postId={Number(post_id)} />
 				</main>
 			</div>
 		</div>

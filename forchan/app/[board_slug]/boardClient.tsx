@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import Link from "next/link";
 import { BoardSlug } from "@/lib/translateBoardSlug";
 import PostForm from "./postForm";
+import ClickableImage from "./clickableImage";
 
 type Post = {
 	id: number;
@@ -10,13 +12,14 @@ type Post = {
 	text: string;
 	created_at: string;
 	rel_key: string;
+	reply_to: number | null;
+	image_url: string | null;
 };
 
-export default function BoardClient({ board }: { board: BoardSlug }) {
+export default function BoardClient({ board, boardSlug }: { board: BoardSlug; boardSlug: string }) {
 	const [posts, setPosts] = useState<Post[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [formOpen, setFormOpen] = useState(false);
-	const [replyText, setReplyText] = useState("");
 
 	const loadPosts = useCallback(async () => {
 		setLoading(true);
@@ -32,20 +35,10 @@ export default function BoardClient({ board }: { board: BoardSlug }) {
 		loadPosts();
 	}, [loadPosts]);
 
-	function openNewPost() {
-		setReplyText("");
-		setFormOpen(true);
-	}
-
-	function openReply(rel_key: string) {
-		setReplyText(`>>${rel_key}\n`);
-		setFormOpen(true);
-	}
-
 	return (
 		<div>
 			<button
-				onClick={openNewPost}
+				onClick={() => setFormOpen(true)}
 				className="border p-2 px-4 mb-10 cursor-pointer bg-amber-100 hover:bg-amber-200"
 			>
 				new post
@@ -54,7 +47,6 @@ export default function BoardClient({ board }: { board: BoardSlug }) {
 			{formOpen && (
 				<PostForm
 					board={board}
-					initialText={replyText}
 					onClose={() => setFormOpen(false)}
 					onPosted={loadPosts}
 				/>
@@ -68,17 +60,20 @@ export default function BoardClient({ board }: { board: BoardSlug }) {
 				{posts.map((post) => (
 					<div key={post.id} className="bg-[#d6daf0] border border-[#b7c5d9] p-2 text-sm">
 						<div className="mb-1">
-							<span className="font-bold text-[#117743]">{post.title}</span>{" "}
+							<Link
+								href={`/${boardSlug}/${post.id}`}
+								className="font-bold text-[#117743] cursor-pointer hover:underline"
+							>
+								{post.title}
+							</Link>{" "}
 							<span className="text-xs text-gray-600">
 								No.{post.id} rel:{post.rel_key} {new Date(post.created_at).toLocaleString()}
 							</span>{" "}
-							<button
-								onClick={() => openReply(post.rel_key)}
-								className="text-xs underline cursor-pointer"
-							>
+							<Link href={`/${boardSlug}/${post.id}`} className="text-xs underline cursor-pointer">
 								[reply]
-							</button>
+							</Link>
 						</div>
+						{post.image_url && <ClickableImage src={post.image_url} />}
 						<p className="whitespace-pre-wrap">{post.text}</p>
 					</div>
 				))}

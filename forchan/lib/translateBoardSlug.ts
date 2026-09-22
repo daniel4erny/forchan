@@ -13,3 +13,8 @@ export default function translateSlug(slug: string): BoardSlug {
 	if (!board) notFound();
 	return board;
 }
+
+export function boardToSlug(board: string): string {
+	const entry = Object.entries(boards).find(([, name]) => name === board);
+	return entry ? entry[0] : board;
+}

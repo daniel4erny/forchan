@@ -1,7 +1,10 @@
 import supabase
 import os
-from fastapi import HTTPException
+import uuid
+from fastapi import HTTPException, UploadFile
 from datetime import datetime, timedelta
+
+IMAGE_BUCKET = "post-images"
 
 class db:
 	def __init__(self, client) -> None:
@@ -39,7 +42,7 @@ class PostDB(db):
 		rel_key = response[0]["rel_key"]
 		return rel_key
 
-	async def makePost(self, title: str, text: str, board_slug: str, token: str):
+	async def makePost(self, title: str, text: str, board_slug: str, token: str | None, reply_to: int | None = None, image_url: str | None = None):
 		allowedBoards = {"technology", "games", "sports"}
 		if board_slug not in allowedBoards:
 			raise HTTPException(
@@ -47,7 +50,7 @@ class PostDB(db):
 					detail="DONT FUCKING TRY ME BRO (board slug)"
 				)
 
-		rel_key = await self.__getRelKey(token)
+		rel_key = await self.__getRelKey(token) if token else None
 
 		response = await (
 			self.client.table("posts")
@@ -55,12 +58,44 @@ class PostDB(db):
 				"rel_key": rel_key,
 				"text": text,
 				"title": title,
-				"board_slug": board_slug
+				"board_slug": board_slug,
+				"reply_to": reply_to,
+				"image_url": image_url
 				})
 			.execute()
 		)
 
 		return response
+
+	async def uploadImage(self, file: UploadFile):
+		allowedTypes = {"image/png", "image/jpeg", "image/gif", "image/webp"}
+		if file.content_type not in allowedTypes:
+			raise HTTPException(
+				status_code=400,
+				detail="DONT FUCKING TRY ME BRO (unsupported image type)"
+			)
+
+		contents = await file.read()
+
+		maxBytes = 5 * 1024 * 1024
+		if len(contents) > maxBytes:
+			raise HTTPException(
+				status_code=400,
+				detail="DONT FUCKING TRY ME BRO (image too big, max 5MB)"
+			)
+
+		ext = file.filename.rsplit(".", 1)[-1] if file.filename and "." in file.filename else "bin"
+		path = f"{uuid.uuid4()}.{ext}"
+
+		await self.client.storage.from_(IMAGE_BUCKET).upload(
+			path,
+			contents,
+			{"content-type": file.content_type}
+		)
+
+		url = await self.client.storage.from_(IMAGE_BUCKET).get_public_url(path)
+
+		return {"url": url}
 
 	async def editPost(self, title: str, text: str, token: str, post_id: int):
 		rel_key = await self.__getRelKey(token)
@@ -91,27 +126,16 @@ class PostDB(db):
 				)
 
 	async def deletePost(self, token: str, post_id: int):
-		response = await (
-			self.client.table("tokens")
-			.select("*")
-			.eq("session_token", token)
-			.execute()
-		)
-
-		response = response.dict()["data"]
-
-		if len(response) == 0:
-			raise HTTPException(
-				status_code=400,
-				detail="DONT FUCKING TRY ME BRO (invalid token)"
-			)
-
-		rel_key = response[0]["rel_key"]
 		rel_key = await self.__getRelKey(token)
 
 		response = await (
 			self.client.table("posts")
-			.delete()
+			.update({
+				"title": "deleted",
+				"text": "deleted",
+				"image_url": None,
+				"rel_key": None,
+			})
 			.eq("rel_key", rel_key)
 			.eq("id", post_id)
 			.execute()
@@ -141,12 +165,35 @@ class PostDB(db):
 			self.client.table("posts")
 			.select("*")
 			.eq("board_slug", board_slug)
+			.is_("reply_to", "null")
 			.order("created_at", desc=True)
 			.range(min_lim, max_lim)
 			.execute()
 			)
 
 		return response
+
+	async def getPostsReplies(self, post_id: int, page_num: int):
+		collected = []
+		frontier = [post_id]
+
+		while frontier:
+			response = await (
+				self.client.table("posts")
+				.select("*")
+				.in_("reply_to", frontier)
+				.order("created_at", desc=False)
+				.execute()
+			)
+
+			batch = response.dict()["data"]
+			if not batch:
+				break
+
+			collected.extend(batch)
+			frontier = [p["id"] for p in batch]
+
+		return {"data": collected}
 
 	async def getPostsRelKey(self, rel_key: str, page_num: int):
 		min_lim = page_num * 50
@@ -184,7 +231,20 @@ class PostDB(db):
 		response = await (
 			self.client.table("posts")
 			.select("*")
-			.eq("post_id", post_id)
+			.eq("id", post_id)
+			.execute()
+		)
+
+		return response
+
+	async def deleteOldAnonymousPosts(self):
+		cutoff = str(datetime.utcnow() - timedelta(days=3))
+
+		response = await (
+			self.client.table("posts")
+			.delete()
+			.is_("rel_key", "null")
+			.lt("created_at", cutoff)
 			.execute()
 		)
 
@@ -238,9 +298,19 @@ class UserDB(db):
 
 		return {
 			"vanish_at": data[0]["vanish_at"],
-			"created_at": data[0]["created_at"]
+			"created_at": data[0]["created_at"],
+			"rel_key": data[0]["rel_key"]
 		}
 
+	async def deleteExpiredTokens(self):
+		cutoff = str(datetime.utcnow())
 
+		response = await (
+			self.client.table("tokens")
+			.delete()
+			.lt("vanish_at", cutoff)
+			.execute()
+		)
 
+		return response
 
